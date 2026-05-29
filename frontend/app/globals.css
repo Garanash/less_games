@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+:root,
+[data-editor-theme="dark"] {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --editor-bg: #09090b;
+  --editor-surface: #18181b;
+  --editor-surface-alt: #0f0f12;
+  --editor-surface-hover: #27272a;
+  --editor-border: #3f3f46;
+  --editor-text: #fafafa;
+  --editor-muted: #a1a1aa;
+  --editor-input-bg: #18181b;
+  --editor-shadow: none;
+  --editor-btn-secondary-bg: #27272a;
+  --editor-btn-secondary-text: #fafafa;
+  --editor-btn-secondary-border: #52525b;
+  --editor-screen-bg: #18181b;
+  --editor-screen-gradient-from: #27272a;
+  --editor-screen-gradient-to: #09090b;
+  --editor-screen-title: #fafafa;
+}
+
+[data-editor-theme="light"] {
+  --background: #e4e4e7;
+  --foreground: #18181b;
+  --editor-bg: #e4e4e7;
+  --editor-surface: #ffffff;
+  --editor-surface-alt: #f4f4f5;
+  --editor-surface-hover: #e4e4e7;
+  --editor-border: #a1a1aa;
+  --editor-text: #18181b;
+  --editor-muted: #52525b;
+  --editor-input-bg: #ffffff;
+  --editor-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
+  --editor-btn-secondary-bg: #ffffff;
+  --editor-btn-secondary-text: #18181b;
+  --editor-btn-secondary-border: #a1a1aa;
+  --editor-screen-bg: #ffffff;
+  --editor-screen-gradient-from: #f4f4f5;
+  --editor-screen-gradient-to: #e4e4e7;
+  --editor-screen-title: #18181b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.editor-shell {
+  background: var(--editor-bg);
+  color: var(--editor-text);
+}
+
+.editor-shell input,
+.editor-shell select,
+.editor-shell textarea {
+  background-color: var(--editor-input-bg) !important;
+  border-color: var(--editor-border) !important;
+  color: var(--editor-text) !important;
+}
+
+.editor-shell input::placeholder,
+.editor-shell textarea::placeholder {
+  color: var(--editor-muted) !important;
+}
+
+.react-flow__controls {
+  background: var(--editor-surface) !important;
+  border: 1px solid var(--editor-border) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: var(--editor-shadow) !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: var(--editor-surface-alt) !important;
+  border-bottom: 1px solid var(--editor-border) !important;
+  fill: var(--editor-text) !important;
+  color: var(--editor-text) !important;
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--editor-surface-hover) !important;
+}
+
+.react-flow__controls-button svg {
+  fill: var(--editor-text) !important;
+  max-width: 14px;
+  max-height: 14px;
+}
+
+select,
+select option {
+  color-scheme: dark;
+}
+
+[data-editor-theme="light"] select,
+[data-editor-theme="light"] select option {
+  color-scheme: light;
+}
+
+[data-editor-theme="light"] .react-flow__minimap {
+  background: var(--editor-surface-alt) !important;
+}
+
+[data-editor-theme="light"] .react-flow__minimap-mask {
+  fill: rgba(255, 255, 255, 0.65) !important;
+}
+
+[data-editor-theme="light"] .react-flow__edge-path {
+  stroke: #71717a !important;
+}
+
+[data-editor-theme="light"] .react-flow__background pattern line,
+[data-editor-theme="light"] .react-flow__background pattern path {
+  stroke: #d4d4d8;
+}

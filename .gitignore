@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+uploads/
+backend/uploads/
+*.db
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+frontend/.next/
+frontend/node_modules/
+scripts/check_remote.py
+cookies.txt
