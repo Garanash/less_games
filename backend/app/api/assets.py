@@ -14,10 +14,11 @@ from app.services.storage import get_storage
 
 router = APIRouter(prefix="/projects", tags=["assets"])
 
-ALLOWED_KINDS = {"background", "character", "music", "sound", "voice"}
+ALLOWED_KINDS = {"background", "character", "cg", "music", "sound", "voice"}
 MIME_BY_KIND = {
     "background": {"image/png", "image/jpeg", "image/webp"},
     "character": {"image/png", "image/jpeg", "image/webp"},
+    "cg": {"image/png", "image/jpeg", "image/webp", "video/mp4", "video/webm"},
     "music": {"audio/mpeg", "audio/ogg", "audio/wav", "audio/x-wav"},
     "sound": {"audio/mpeg", "audio/ogg", "audio/wav", "audio/x-wav"},
     "voice": {"audio/mpeg", "audio/ogg", "audio/wav", "audio/x-wav"},

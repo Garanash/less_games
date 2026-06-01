@@ -33,6 +33,7 @@ export const BLOCK_ICONS: Record<string, LucideIcon> = {
   sound: Volume2,
   effect: Sparkles,
   set_variable: Variable,
+  unlock_cg: Image,
   condition: GitBranch,
   jump: ArrowRight,
   label: Tag,

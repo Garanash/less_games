@@ -123,6 +123,28 @@ select option {
   fill: rgba(255, 255, 255, 0.65) !important;
 }
 
+.react-flow__edge.selectable.selected .react-flow__edge-path {
+  stroke: #818cf8 !important;
+  stroke-width: 3px !important;
+}
+
+.react-flow__edge.selectable:hover .react-flow__edge-path {
+  stroke: #a5b4fc !important;
+  stroke-width: 2.5px !important;
+}
+
+.react-flow__handle {
+  width: 10px !important;
+  height: 10px !important;
+  border: 2px solid var(--editor-surface) !important;
+}
+
+.react-flow__handle.connectingfrom,
+.react-flow__handle.connectingto,
+.react-flow__handle.connectionindicator {
+  transform: scale(1.35);
+}
+
 [data-editor-theme="light"] .react-flow__edge-path {
   stroke: #71717a !important;
 }

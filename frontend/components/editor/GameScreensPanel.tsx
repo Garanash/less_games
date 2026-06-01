@@ -16,7 +16,9 @@ import {
   type ScreenTab,
   type SettingsItem,
 } from "@/lib/game-screens";
+import { mergeElementStyle, DEFAULT_PROGRESS_BAR } from "@/lib/screen-styles";
 import { ScreenCanvasEditor, type CanvasElement } from "@/components/editor/ScreenCanvasEditor";
+import { StyleFieldsEditor } from "@/components/editor/StyleFieldsEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +42,8 @@ const SCREEN_TABS: { id: ScreenTab; label: string }[] = [
 const ACTION_LABELS: Record<MainMenuItem["action"], string> = {
   start: "Начать игру",
   load: "Загрузить",
+  save: "Сохранить",
+  gallery: "Галерея",
   settings: "Настройки",
   quit: "Выход",
 };
@@ -165,6 +169,7 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
 
   const bgUrl = (id: string) => assets.find((a) => a.id === id)?.url;
   const activeLoader = useMemo(() => getActiveLoader(config), [config]);
+  const progressBar = activeLoader.progress_bar ?? DEFAULT_PROGRESS_BAR;
 
   const updateLoading = (patch: Partial<GameScreensConfig["loading"]>) => {
     onChange({ ...config, loading: { ...config.loading, ...patch } });
@@ -197,18 +202,21 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
         label: activeLoader.title || "Заголовок",
         pos: activeLoader.title_pos,
         variant: "title",
+        style: activeLoader.title_style,
       },
       {
         id: "loading-subtitle",
         label: activeLoader.subtitle || "Загрузка...",
         pos: activeLoader.subtitle_pos,
-        variant: "text",
+        variant: "subtitle",
+        style: activeLoader.subtitle_style,
       },
       {
         id: "loading-tip",
         label: activeLoader.tip_text.slice(0, 40) || "Подсказка",
         pos: activeLoader.tip_pos,
         variant: "text",
+        style: activeLoader.tip_style,
       },
     ],
     [activeLoader],
@@ -221,12 +229,14 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
         label: config.main_menu.title || "Моя игра",
         pos: config.main_menu.title_pos,
         variant: "title",
+        style: config.main_menu.title_style,
       },
       ...config.main_menu.items.map((item) => ({
         id: item.id,
         label: item.label,
         pos: { x: item.x, y: item.y },
         variant: "button" as const,
+        style: mergeElementStyle("button", config.main_menu.button_style, item.style),
       })),
     ],
     [config.main_menu],
@@ -239,13 +249,22 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
         label: config.settings.title || "Настройки",
         pos: config.settings.title_pos,
         variant: "title",
+        style: config.settings.title_style,
       },
       ...config.settings.items.map((item) => ({
         id: item.id,
         label: `${item.label} (${TYPE_LABELS[item.type]})`,
         pos: { x: item.x, y: item.y },
         variant: "control" as const,
+        style: mergeElementStyle("control", config.settings.control_style, item.style),
       })),
+      {
+        id: "settings-back",
+        label: config.settings.back_button.label,
+        pos: { x: config.settings.back_button.x, y: config.settings.back_button.y },
+        variant: "button",
+        style: mergeElementStyle("button", config.settings.back_button.style),
+      },
     ],
     [config.settings],
   );
@@ -271,6 +290,10 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
     }
     if (id === "settings-title") {
       updateSettings({ title_pos: pos });
+      return;
+    }
+    if (id === "settings-back") {
+      updateSettings({ back_button: { ...config.settings.back_button, x: pos.x, y: pos.y } });
       return;
     }
     updateSettings({
@@ -349,6 +372,16 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
                         title_pos: { x: 50, y: 38 },
                         subtitle_pos: { x: 50, y: 52 },
                         tip_pos: { x: 50, y: 88 },
+                        progress_bar: {
+                          x: 50,
+                          y: 92,
+                          width_percent: 32,
+                          height: 4,
+                          color: "#6366f1",
+                          background_color: "#27272a",
+                          border_radius: 999,
+                          visible: true,
+                        },
                       },
                     ],
                     active_loader_id: id,
@@ -391,6 +424,11 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
                 pos={activeLoader.title_pos}
                 onChange={(p) => updateActiveLoader({ title_pos: p })}
               />
+              <StyleFieldsEditor
+                variant="title"
+                value={activeLoader.title_style ?? mergeElementStyle("title")}
+                onChange={(title_style) => updateActiveLoader({ title_style })}
+              />
             </BlockCard>
             <BlockCard
               title="Подзаголовок"
@@ -405,6 +443,11 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
               <PositionFields
                 pos={activeLoader.subtitle_pos}
                 onChange={(p) => updateActiveLoader({ subtitle_pos: p })}
+              />
+              <StyleFieldsEditor
+                variant="subtitle"
+                value={activeLoader.subtitle_style ?? mergeElementStyle("subtitle")}
+                onChange={(subtitle_style) => updateActiveLoader({ subtitle_style })}
               />
             </BlockCard>
             <BlockCard
@@ -422,6 +465,91 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
                 pos={activeLoader.tip_pos}
                 onChange={(p) => updateActiveLoader({ tip_pos: p })}
               />
+              <StyleFieldsEditor
+                variant="text"
+                value={activeLoader.tip_style ?? mergeElementStyle("text")}
+                onChange={(tip_style) => updateActiveLoader({ tip_style })}
+              />
+            </BlockCard>
+            <BlockCard title="Полоса загрузки">
+              <label className="mb-2 flex items-center gap-2 text-xs text-[var(--editor-muted)]">
+                <input
+                  type="checkbox"
+                  checked={progressBar.visible !== false}
+                  onChange={(e) =>
+                    updateActiveLoader({
+                      progress_bar: { ...progressBar, visible: e.target.checked },
+                    })
+                  }
+                />
+                Показывать полосу прогресса
+              </label>
+              <PositionFields
+                pos={{ x: progressBar.x, y: progressBar.y }}
+                onChange={(p) =>
+                  updateActiveLoader({
+                    progress_bar: { ...progressBar, x: p.x, y: p.y },
+                  })
+                }
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[10px] text-[var(--editor-muted)]">Ширина %</Label>
+                  <Input
+                    type="number"
+                    min={10}
+                    max={80}
+                    value={progressBar.width_percent}
+                    onChange={(e) =>
+                      updateActiveLoader({
+                        progress_bar: { ...progressBar, width_percent: Number(e.target.value) },
+                      })
+                    }
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] text-[var(--editor-muted)]">Высота px</Label>
+                  <Input
+                    type="number"
+                    min={2}
+                    max={24}
+                    value={progressBar.height}
+                    onChange={(e) =>
+                      updateActiveLoader({
+                        progress_bar: { ...progressBar, height: Number(e.target.value) },
+                      })
+                    }
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[10px] text-[var(--editor-muted)]">Цвет полосы</Label>
+                  <Input
+                    value={progressBar.color}
+                    onChange={(e) =>
+                      updateActiveLoader({
+                        progress_bar: { ...progressBar, color: e.target.value },
+                      })
+                    }
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] text-[var(--editor-muted)]">Фон полосы</Label>
+                  <Input
+                    value={progressBar.background_color}
+                    onChange={(e) =>
+                      updateActiveLoader({
+                        progress_bar: { ...progressBar, background_color: e.target.value },
+                      })
+                    }
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
             </BlockCard>
             {config.loading.loaders.length > 1 && (
               <Button
@@ -475,6 +603,20 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
               <PositionFields
                 pos={config.main_menu.title_pos}
                 onChange={(p) => updateMainMenu({ title_pos: p })}
+              />
+              <StyleFieldsEditor
+                variant="title"
+                value={config.main_menu.title_style ?? mergeElementStyle("title")}
+                onChange={(title_style) => updateMainMenu({ title_style })}
+              />
+            </BlockCard>
+
+            <BlockCard title="Стиль кнопок по умолчанию">
+              <StyleFieldsEditor
+                variant="button"
+                label="Все пункты меню"
+                value={config.main_menu.button_style ?? mergeElementStyle("button")}
+                onChange={(button_style) => updateMainMenu({ button_style })}
               />
             </BlockCard>
 
@@ -533,6 +675,18 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
                       })
                     }
                   />
+                  <StyleFieldsEditor
+                    variant="button"
+                    label="Индивидуальный стиль"
+                    value={mergeElementStyle("button", config.main_menu.button_style, item.style)}
+                    onChange={(style) =>
+                      updateMainMenu({
+                        items: config.main_menu.items.map((i) =>
+                          i.id === item.id ? { ...i, style } : i,
+                        ),
+                      })
+                    }
+                  />
                 </BlockCard>
               ))}
               <Button
@@ -585,6 +739,53 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
               <PositionFields
                 pos={config.settings.title_pos}
                 onChange={(p) => updateSettings({ title_pos: p })}
+              />
+              <StyleFieldsEditor
+                variant="title"
+                value={config.settings.title_style ?? mergeElementStyle("title")}
+                onChange={(title_style) => updateSettings({ title_style })}
+              />
+            </BlockCard>
+
+            <BlockCard title="Стиль элементов по умолчанию">
+              <StyleFieldsEditor
+                variant="control"
+                label="Все настройки"
+                value={config.settings.control_style ?? mergeElementStyle("control")}
+                onChange={(control_style) => updateSettings({ control_style })}
+              />
+            </BlockCard>
+
+            <BlockCard
+              title="Кнопка «Назад»"
+              selected={selectedId === "settings-back"}
+              onSelect={() => setSelectedId("settings-back")}
+            >
+              <Input
+                value={config.settings.back_button.label}
+                onChange={(e) =>
+                  updateSettings({
+                    back_button: { ...config.settings.back_button, label: e.target.value },
+                  })
+                }
+                className="text-xs"
+              />
+              <PositionFields
+                pos={{ x: config.settings.back_button.x, y: config.settings.back_button.y }}
+                onChange={(p) =>
+                  updateSettings({
+                    back_button: { ...config.settings.back_button, x: p.x, y: p.y },
+                  })
+                }
+              />
+              <StyleFieldsEditor
+                variant="button"
+                value={config.settings.back_button.style ?? mergeElementStyle("button")}
+                onChange={(style) =>
+                  updateSettings({
+                    back_button: { ...config.settings.back_button, style },
+                  })
+                }
               />
             </BlockCard>
 
@@ -650,6 +851,18 @@ export function GameScreensPanel({ config, assets, onChange, initialTab }: GameS
                       updateSettings({
                         items: config.settings.items.map((i) =>
                           i.id === item.id ? { ...i, x: p.x, y: p.y } : i,
+                        ),
+                      })
+                    }
+                  />
+                  <StyleFieldsEditor
+                    variant="control"
+                    label="Индивидуальный стиль"
+                    value={mergeElementStyle("control", config.settings.control_style, item.style)}
+                    onChange={(style) =>
+                      updateSettings({
+                        items: config.settings.items.map((i) =>
+                          i.id === item.id ? { ...i, style } : i,
                         ),
                       })
                     }

@@ -5,8 +5,35 @@ import { DEFAULT_NODE_DATA, type GraphEdge, type GraphNode } from "@/lib/api";
 export const SYSTEM_BLOCK_TYPES = ["loading", "main_menu", "settings", "start"] as const;
 export type SystemBlockType = (typeof SYSTEM_BLOCK_TYPES)[number];
 
+/** System blocks edited only via «Экраны», not shown on the story canvas. */
+export const CANVAS_HIDDEN_SYSTEM_TYPES = ["loading", "main_menu", "settings"] as const;
+export type CanvasHiddenSystemType = (typeof CANVAS_HIDDEN_SYSTEM_TYPES)[number];
+
 export function isSystemBlockType(type: string): type is SystemBlockType {
   return (SYSTEM_BLOCK_TYPES as readonly string[]).includes(type);
+}
+
+export function isCanvasHiddenBlockType(type: string): type is CanvasHiddenSystemType {
+  return (CANVAS_HIDDEN_SYSTEM_TYPES as readonly string[]).includes(type);
+}
+
+export function splitGraphForCanvas(nodes: GraphNode[], edges: GraphEdge[]) {
+  const hiddenIds = new Set(nodes.filter((n) => isCanvasHiddenBlockType(n.type)).map((n) => n.id));
+  return {
+    canvasNodes: nodes.filter((n) => !hiddenIds.has(n.id)),
+    canvasEdges: edges.filter((e) => !hiddenIds.has(e.source) && !hiddenIds.has(e.target)),
+    hiddenNodes: nodes.filter((n) => hiddenIds.has(n.id)),
+    hiddenEdges: edges.filter((e) => hiddenIds.has(e.source) || hiddenIds.has(e.target)),
+  };
+}
+
+export function mergeCanvasGraph(
+  canvasNodes: GraphNode[],
+  canvasEdges: GraphEdge[],
+  hiddenNodes: GraphNode[],
+  hiddenEdges: GraphEdge[],
+): { nodes: GraphNode[]; edges: GraphEdge[] } {
+  return { nodes: [...hiddenNodes, ...canvasNodes], edges: [...hiddenEdges, ...canvasEdges] };
 }
 
 export function isProtectedEdge(edge: GraphEdge, nodes: GraphNode[]): boolean {

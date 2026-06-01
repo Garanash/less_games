@@ -8,13 +8,16 @@ import {
   ArrowLeft,
   HelpCircle,
   Image,
+  Images,
   Loader2,
   Monitor,
   Moon,
+  RotateCcw,
   Save,
   Sun,
   Users,
 } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
 
 import {
   api,
@@ -30,18 +33,28 @@ import {
   parseScreenResolutionFromMetadata,
 } from "@/lib/screen-resolutions";
 import { DEFAULT_GAME_SCREENS, parseGameScreens, type GameScreensConfig, type ScreenTab } from "@/lib/game-screens";
-import { ensureSystemGraph } from "@/lib/system-blocks";
+import {
+  DEFAULT_GALLERY,
+  DEFAULT_SAVE_CONFIG,
+  parseGalleryConfig,
+  parseSaveConfig,
+  type GalleryConfig,
+  type SaveConfig,
+} from "@/lib/gallery";
+import { normalizeCharacterEmotions } from "@/lib/character-utils";
+import { ensureSystemGraph, isCanvasHiddenBlockType } from "@/lib/system-blocks";
 import { Button } from "@/components/ui/button";
 import { BlockToolbar } from "@/components/editor/BlockToolbar";
 import { BlockTourModal } from "@/components/editor/BlockTourModal";
 import { BuildGameModal, type BuildPlatform } from "@/components/editor/BuildGameModal";
 import { EditorModal } from "@/components/editor/EditorModal";
-import { EditorResizableLayout } from "@/components/editor/EditorResizableLayout";
+import { EditorResizableLayout, resetEditorLayoutUi } from "@/components/editor/EditorResizableLayout";
 import { EditorSidebar } from "@/components/editor/EditorSidebar";
 import { EditorThemeProvider, useEditorTheme } from "@/components/editor/EditorThemeProvider";
 import { GameScreensPanel } from "@/components/editor/GameScreensPanel";
 import { MediaLibraryPanel } from "@/components/editor/MediaLibraryPanel";
 import { CharactersPanel } from "@/components/editor/CharactersPanel";
+import { GalleryPanel } from "@/components/editor/GalleryPanel";
 import { ProjectSwitcher } from "@/components/editor/ProjectSwitcher";
 import { ScenePreview } from "@/components/editor/ScenePreview";
 import { useEditorStore } from "@/components/editor/store";
@@ -66,14 +79,8 @@ type EditorClientProps = {
 function parseCharacters(metadata: Record<string, unknown> | undefined): ProjectCharacter[] {
   const raw = metadata?.characters;
   if (!Array.isArray(raw) || raw.length === 0) return DEFAULT_CHARACTERS;
-  return raw as ProjectCharacter[];
+  return (raw as ProjectCharacter[]).map(normalizeCharacterEmotions);
 }
-
-const SCREEN_NODE_TABS: Partial<Record<string, ScreenTab>> = {
-  loading: "loading",
-  main_menu: "main_menu",
-  settings: "settings",
-};
 
 export function EditorClient(props: EditorClientProps) {
   return (
@@ -93,12 +100,16 @@ function EditorClientInner({ projectId, projectTitle }: EditorClientProps) {
     parseScreenResolutionFromMetadata(undefined),
   );
   const [gameScreens, setGameScreens] = useState<GameScreensConfig>(DEFAULT_GAME_SCREENS);
+  const [gallery, setGallery] = useState<GalleryConfig>(DEFAULT_GALLERY);
+  const [saveConfig, setSaveConfig] = useState<SaveConfig>(DEFAULT_SAVE_CONFIG);
   const [tourOpen, setTourOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
   const [charactersOpen, setCharactersOpen] = useState(false);
   const [screensOpen, setScreensOpen] = useState(false);
   const [screenEditorTab, setScreenEditorTab] = useState<ScreenTab>("loading");
   const [buildModalOpen, setBuildModalOpen] = useState(false);
+  const [layoutResetKey, setLayoutResetKey] = useState(0);
   const [manualSaving, setManualSaving] = useState(false);
   const isSaving = useEditorStore((s) => s.isSaving);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -154,13 +165,10 @@ function EditorClientInner({ projectId, projectTitle }: EditorClientProps) {
   );
 
   useEffect(() => {
-    if (!selectedNode) return;
-    const tab = SCREEN_NODE_TABS[selectedNode.type];
-    if (tab) {
-      setScreenEditorTab(tab);
-      setScreensOpen(true);
+    if (selectedNode && isCanvasHiddenBlockType(selectedNode.type)) {
+      selectNode(null);
     }
-  }, [selectedNodeId, selectedNode?.type]);
+  }, [selectedNode, selectNode]);
 
   const saveMutation = useMutation({
     mutationFn: (graph: { nodes: GraphNode[]; edges: GraphEdge[] }) => api.saveGraph(projectId, graph),
@@ -188,12 +196,16 @@ function EditorClientInner({ projectId, projectTitle }: EditorClientProps) {
   }, [projectId, setProjectId, setGraph, setAssets, selectNode, setPreviewState]);
 
   useEffect(() => {
-    if (projectQuery.data) {
+    if (projectQuery.data && !charactersOpen) {
       setCharacters(parseCharacters(projectQuery.data.metadata));
       setScreenResolution(parseScreenResolutionFromMetadata(projectQuery.data.metadata));
       setGameScreens(parseGameScreens(projectQuery.data.metadata));
     }
-  }, [projectQuery.data]);
+    if (projectQuery.data && !galleryOpen) {
+      setGallery(parseGalleryConfig(projectQuery.data.metadata));
+      setSaveConfig(parseSaveConfig(projectQuery.data.metadata));
+    }
+  }, [projectQuery.data, charactersOpen, galleryOpen]);
 
   useEffect(() => {
     if (!graphQuery.data) return;
@@ -282,6 +294,43 @@ function EditorClientInner({ projectId, projectTitle }: EditorClientProps) {
     [scheduleMetadataSave],
   );
 
+  const handleGalleryChange = useCallback(
+    (config: GalleryConfig) => {
+      setGallery(config);
+      scheduleMetadataSave({ gallery: config });
+    },
+    [scheduleMetadataSave],
+  );
+
+  const handleSaveConfigChange = useCallback(
+    (patch: SaveConfig) => {
+      setSaveConfig(patch);
+      scheduleMetadataSave({ save_config: patch });
+    },
+    [scheduleMetadataSave],
+  );
+
+  const handleAddGalleryMenuItem = useCallback(() => {
+    const items = gameScreens.main_menu.items ?? [];
+    if (items.some((item) => item.action === "gallery")) return;
+    handleGameScreensChange({
+      ...gameScreens,
+      main_menu: {
+        ...gameScreens.main_menu,
+        items: [
+          ...items,
+          {
+            id: uuidv4(),
+            label: "Галерея",
+            action: "gallery",
+            x: 50,
+            y: 58,
+          },
+        ],
+      },
+    });
+  }, [gameScreens, handleGameScreensChange]);
+
   const handleGraphChange = useCallback(
     (nextNodes: GraphNode[], nextEdges: GraphEdge[]) => {
       scheduleSave(nextNodes, nextEdges);
@@ -335,6 +384,8 @@ function EditorClientInner({ projectId, projectTitle }: EditorClientProps) {
       await saveMetadataMutation.mutateAsync({
         characters,
         game_screens: gameScreens,
+        gallery,
+        save_config: saveConfig,
         screen_resolution: screenResolution.id,
         screen_width: screenResolution.width,
         screen_height: screenResolution.height,
@@ -354,6 +405,8 @@ function EditorClientInner({ projectId, projectTitle }: EditorClientProps) {
       await saveMetadataMutation.mutateAsync({
         characters,
         game_screens: gameScreens,
+        gallery,
+        save_config: saveConfig,
         screen_resolution: screenResolution.id,
         screen_width: screenResolution.width,
         screen_height: screenResolution.height,
@@ -376,6 +429,11 @@ function EditorClientInner({ projectId, projectTitle }: EditorClientProps) {
       setExportLoading(false);
     }
   };
+
+  const handleResetLayout = useCallback(() => {
+    resetEditorLayoutUi();
+    setLayoutResetKey((key) => key + 1);
+  }, []);
 
   const isLoading = graphQuery.isLoading || projectQuery.isLoading;
   const isAuthError =
@@ -445,6 +503,21 @@ function EditorClientInner({ projectId, projectTitle }: EditorClientProps) {
             <Monitor size={14} className="shrink-0" />
             <span>Экраны</span>
           </Button>
+          <Button type="button" variant="secondary" size="sm" className="h-8 min-w-[6.5rem] px-2.5 text-xs" onClick={() => setGalleryOpen(true)}>
+            <Images size={14} className="shrink-0" />
+            <span>Галерея</span>
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-8 px-2.5 text-xs"
+            onClick={handleResetLayout}
+            title="Вернуть размеры и видимость панелей по умолчанию"
+          >
+            <RotateCcw size={14} className="shrink-0" />
+            <span>Сбросить интерфейс</span>
+          </Button>
           <Button type="button" variant="secondary" size="sm" className="h-8 min-w-[6.5rem] px-2.5 text-xs" onClick={toggleTheme}>
             {theme === "dark" ? <Sun size={14} className="shrink-0" /> : <Moon size={14} className="shrink-0" />}
             <span>{theme === "dark" ? "Светлая" : "Тёмная"}</span>
@@ -481,6 +554,19 @@ function EditorClientInner({ projectId, projectTitle }: EditorClientProps) {
         />
       </EditorModal>
 
+      <EditorModal open={galleryOpen} onClose={() => setGalleryOpen(false)} title="Галерея и сохранения" subtitle="CG, чит-коды и слоты сохранения" wide>
+        <GalleryPanel
+          config={gallery}
+          saveSlotCount={saveConfig.slot_count}
+          assets={assets}
+          onChange={handleGalleryChange}
+          onSaveConfigChange={(slotCount) =>
+            handleSaveConfigChange({ ...saveConfig, slot_count: slotCount })
+          }
+          onAddGalleryMenuItem={handleAddGalleryMenuItem}
+        />
+      </EditorModal>
+
       <BlockToolbar onAddNode={handleAddNode} onBuildClick={() => setBuildModalOpen(true)} exportLoading={exportLoading} />
 
       <BuildGameModal
@@ -491,6 +577,7 @@ function EditorClientInner({ projectId, projectTitle }: EditorClientProps) {
       />
 
       <EditorResizableLayout
+        layoutResetKey={layoutResetKey}
         preview={
           <ScenePreview
             state={previewState}
@@ -502,12 +589,18 @@ function EditorClientInner({ projectId, projectTitle }: EditorClientProps) {
             edges={edges}
             assets={assets}
             characters={characters}
+            gameScreens={gameScreens}
+            projectTitle={projectTitle}
+            projectId={projectId}
+            gallery={gallery}
+            saveConfig={saveConfig}
           />
         }
         canvas={<FlowCanvas onGraphChange={handleGraphChange} />}
         sidebar={
           <EditorSidebar
             characters={characters}
+            gallery={gallery}
             onDeleteNode={handleDeleteNode}
             onDirty={handleDirty}
           />

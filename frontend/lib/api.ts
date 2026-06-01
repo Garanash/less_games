@@ -138,11 +138,22 @@ export const api = {
   },
 };
 
+export type CharacterEmotion = {
+  /** Stable key for React lists (never changes after creation). */
+  ui_key?: string;
+  id: string;
+  label: string;
+  asset_id: string;
+};
+
 export type ProjectCharacter = {
   id: string;
   display_name: string;
   color: string;
+  /** @deprecated use emotions + default_emotion_id */
   default_sprite_asset_id?: string;
+  emotions?: CharacterEmotion[];
+  default_emotion_id?: string;
 };
 
 export const DEFAULT_CHARACTERS: ProjectCharacter[] = [
@@ -189,10 +200,11 @@ export type PreviewState = {
     url: string;
     position: string;
   }>;
-  dialogue?: { character: string; text: string } | null;
+  dialogue?: { character: string; text: string; emotion_id?: string } | null;
   music?: { asset_id: string; url: string; fade?: number; loop?: boolean } | null;
   sound?: { asset_id: string; url: string } | null;
   effect?: { type: string; params?: Record<string, unknown> } | null;
+  uiScreen?: "loading" | "main_menu" | "settings" | "gallery" | "save" | "load";
   variables: Record<string, unknown>;
 };
 
@@ -210,6 +222,7 @@ export const BLOCK_TYPES = [
   { type: "sound", label: "Звук", color: "#f97316" },
   { type: "effect", label: "Эффект", color: "#8b5cf6" },
   { type: "set_variable", label: "Переменная", color: "#14b8a6" },
+  { type: "unlock_cg", label: "Открыть CG", color: "#e879f9" },
   { type: "condition", label: "Условие", color: "#ef4444" },
   { type: "jump", label: "Переход", color: "#6366f1" },
   { type: "label", label: "Метка", color: "#84cc16" },
@@ -230,14 +243,15 @@ export const DEFAULT_NODE_DATA: Record<string, Record<string, unknown>> = {
     intro_text: "",
   },
   scene: { asset_id: "", transition: "dissolve" },
-  dialogue: { character: "narrator", text: "" },
-  choice: { options: [{ handle: "option_0", text: "Вариант 1" }] },
-  show_character: { character_id: "hero", asset_id: "", position: "center" },
+  dialogue: { character: "narrator", text: "", emotion_id: "", effect_type: "", effect_params: {} },
+  choice: { options: [{ handle: "option_0", text: "Вариант 1", highlight: false }] },
+  show_character: { character_id: "hero", emotion_id: "neutral", asset_id: "", position: "center" },
   hide_character: { character_id: "hero" },
   music: { asset_id: "", fade: 0, loop: true },
   sound: { asset_id: "" },
   effect: { effect_type: "dissolve", params: {} },
   set_variable: { name: "score", value: 0 },
+  unlock_cg: { item_id: "" },
   condition: { expression: "score > 0" },
   jump: { target_label: "" },
   label: { name: "scene_2" },

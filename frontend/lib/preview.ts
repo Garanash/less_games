@@ -126,6 +126,7 @@ export function getBlockTypeLabel(type: string): string {
     condition: "Условие",
     jump: "Переход",
     label: "Метка",
+    unlock_cg: "Открыть CG",
     end: "Конец",
   };
   return labels[type] ?? type;

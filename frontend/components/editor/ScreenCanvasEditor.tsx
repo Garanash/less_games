@@ -4,12 +4,14 @@ import { useCallback, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 import type { ElementPosition } from "@/lib/game-screens";
+import { elementStyleToCss, type ElementStyle } from "@/lib/screen-styles";
 
 export type CanvasElement = {
   id: string;
   label: string;
   pos: ElementPosition;
-  variant?: "title" | "button" | "text" | "control";
+  variant?: "title" | "button" | "text" | "control" | "subtitle";
+  style?: ElementStyle;
 };
 
 type ScreenCanvasEditorProps = {
@@ -97,6 +99,7 @@ export function ScreenCanvasEditor({
 
         {elements.map((el) => {
           const selected = selectedId === el.id;
+          const customStyle = el.style ? elementStyleToCss(el.style) : undefined;
           return (
             <div
               key={el.id}
@@ -104,16 +107,23 @@ export function ScreenCanvasEditor({
               tabIndex={0}
               onPointerDown={(e) => handlePointerDown(el.id, el.pos, e)}
               className={cn(
-                "absolute max-w-[85%] -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none select-none px-2 py-1 text-center active:cursor-grabbing",
-                el.variant === "title" && "text-sm font-bold text-[var(--editor-screen-title)] drop-shadow-sm",
-                el.variant === "button" &&
-                  "rounded-md border border-[var(--editor-border)] bg-[var(--editor-surface)]/90 text-xs text-[var(--editor-text)] shadow-[var(--editor-shadow)] backdrop-blur-sm",
-                el.variant === "control" &&
-                  "rounded-md border border-[var(--editor-border)] bg-[var(--editor-surface-alt)]/95 text-[10px] text-[var(--editor-text)] backdrop-blur-sm",
-                el.variant === "text" && "text-[10px] text-[var(--editor-screen-title)] drop-shadow-sm",
+                "absolute -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none select-none active:cursor-grabbing",
+                !el.style && el.variant === "title" && "max-w-[85%] px-2 py-1 text-center text-sm font-bold text-[var(--editor-screen-title)] drop-shadow-sm",
+                !el.style &&
+                  el.variant === "subtitle" &&
+                  "max-w-[85%] px-2 py-1 text-center text-xs text-[var(--editor-muted)] drop-shadow-sm",
+                !el.style &&
+                  el.variant === "button" &&
+                  "max-w-[85%] rounded-md border border-[var(--editor-border)] bg-[var(--editor-surface)]/90 px-2 py-1 text-center text-xs text-[var(--editor-text)] shadow-[var(--editor-shadow)] backdrop-blur-sm",
+                !el.style &&
+                  el.variant === "control" &&
+                  "max-w-[85%] rounded-md border border-[var(--editor-border)] bg-[var(--editor-surface-alt)]/95 px-2 py-1 text-[10px] text-[var(--editor-text)] backdrop-blur-sm",
+                !el.style &&
+                  el.variant === "text" &&
+                  "max-w-[85%] px-2 py-1 text-center text-[10px] text-[var(--editor-screen-title)] drop-shadow-sm",
                 selected && "ring-2 ring-indigo-400 ring-offset-1 ring-offset-transparent",
               )}
-              style={{ left: `${el.pos.x}%`, top: `${el.pos.y}%` }}
+              style={{ left: `${el.pos.x}%`, top: `${el.pos.y}%`, ...customStyle }}
             >
               {el.label}
             </div>

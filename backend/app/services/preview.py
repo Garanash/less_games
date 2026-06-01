@@ -6,6 +6,32 @@ from app.schemas import PreviewStateResponse
 from app.services.storage import get_storage
 
 
+def _resolve_show_asset_id(
+    data: dict,
+    char_id: str,
+    metadata: dict,
+    assets_by_id: dict,
+) -> str | None:
+    direct = data.get("asset_id")
+    if direct and str(direct) in assets_by_id:
+        return str(direct)
+
+    characters = metadata.get("characters") or []
+    char_meta = next((c for c in characters if c.get("id") == char_id), None)
+    if not char_meta:
+        return str(direct) if direct else None
+
+    emotions = char_meta.get("emotions") or []
+    emotion_id = data.get("emotion_id") or char_meta.get("default_emotion_id")
+    if emotion_id:
+        emotion = next((e for e in emotions if e.get("id") == emotion_id), None)
+        if emotion and emotion.get("asset_id"):
+            return str(emotion["asset_id"])
+
+    fallback = char_meta.get("default_sprite_asset_id")
+    return str(fallback) if fallback else None
+
+
 def _build_adjacency(edges: list[GraphEdge]) -> dict[UUID, list[tuple[UUID, str | None]]]:
     adj: dict[UUID, list[tuple[UUID, str | None]]] = defaultdict(list)
     for edge in edges:
@@ -100,13 +126,14 @@ async def compute_preview_state(project: Project, target_node_id: UUID) -> Previ
                 }
 
         elif node.type == "show_character":
-            asset_id = data.get("asset_id")
             char_id = data.get("character_id", "character")
-            if asset_id and asset_id in assets_by_id:
-                asset = assets_by_id[asset_id]
+            asset_id = _resolve_show_asset_id(data, char_id, project.metadata_ or {}, assets_by_id)
+            if asset_id and str(asset_id) in assets_by_id:
+                asset = assets_by_id[str(asset_id)]
                 visible_characters[char_id] = {
                     "character_id": char_id,
-                    "asset_id": asset_id,
+                    "asset_id": str(asset_id),
+                    "emotion_id": data.get("emotion_id"),
                     "url": storage.public_url(asset.storage_key),
                     "position": data.get("position", "center"),
                 }
@@ -116,10 +143,29 @@ async def compute_preview_state(project: Project, target_node_id: UUID) -> Previ
             visible_characters.pop(char_id, None)
 
         elif node.type == "dialogue":
+            char_id = data.get("character", "narrator")
+            emotion_id = data.get("emotion_id")
+            if emotion_id and char_id != "narrator":
+                asset_id = _resolve_show_asset_id(
+                    {"emotion_id": emotion_id},
+                    str(char_id),
+                    project.metadata_ or {},
+                    assets_by_id,
+                )
+                if asset_id and str(asset_id) in assets_by_id:
+                    asset = assets_by_id[str(asset_id)]
+                    visible_characters[str(char_id)] = {
+                        "character_id": str(char_id),
+                        "asset_id": str(asset_id),
+                        "emotion_id": emotion_id,
+                        "url": storage.public_url(asset.storage_key),
+                        "position": visible_characters.get(str(char_id), {}).get("position", "center"),
+                    }
             state.dialogue = {
-                "character": data.get("character", "narrator"),
+                "character": char_id,
                 "text": data.get("text", ""),
                 "voice_asset_id": data.get("voice_asset_id"),
+                "emotion_id": emotion_id,
             }
 
         elif node.type == "music":

@@ -1,3 +1,12 @@
+import type { ElementStyle, ProgressBarConfig } from "@/lib/screen-styles";
+import {
+  DEFAULT_PROGRESS_BAR,
+  normalizeElementStyle,
+  normalizeProgressBar,
+} from "@/lib/screen-styles";
+
+export type { ElementStyle, ProgressBarConfig };
+
 export type ElementPosition = {
   x: number;
   y: number;
@@ -6,9 +15,10 @@ export type ElementPosition = {
 export type MainMenuItem = {
   id: string;
   label: string;
-  action: "start" | "settings" | "load" | "quit";
+  action: "start" | "settings" | "load" | "save" | "gallery" | "quit";
   x: number;
   y: number;
+  style?: ElementStyle;
 };
 
 export type SettingsItem = {
@@ -19,6 +29,14 @@ export type SettingsItem = {
   defaultValue: boolean | number | string;
   x: number;
   y: number;
+  style?: ElementStyle;
+};
+
+export type BackButtonConfig = {
+  label: string;
+  x: number;
+  y: number;
+  style?: ElementStyle;
 };
 
 export type LoadingScreenConfig = {
@@ -31,6 +49,10 @@ export type LoadingScreenConfig = {
   title_pos: ElementPosition;
   subtitle_pos: ElementPosition;
   tip_pos: ElementPosition;
+  title_style?: ElementStyle;
+  subtitle_style?: ElementStyle;
+  tip_style?: ElementStyle;
+  progress_bar?: ProgressBarConfig;
 };
 
 export type GameScreensConfig = {
@@ -43,12 +65,17 @@ export type GameScreensConfig = {
     music_asset_id: string;
     title: string;
     title_pos: ElementPosition;
+    title_style?: ElementStyle;
+    button_style?: ElementStyle;
     items: MainMenuItem[];
   };
   settings: {
     background_asset_id: string;
     title: string;
     title_pos: ElementPosition;
+    title_style?: ElementStyle;
+    control_style?: ElementStyle;
+    back_button: BackButtonConfig;
     items: SettingsItem[];
   };
 };
@@ -67,6 +94,7 @@ const DEFAULT_LOADER: LoadingScreenConfig = {
   title_pos: { x: 50, y: 38 },
   subtitle_pos: { x: 50, y: 52 },
   tip_pos: { x: 50, y: 88 },
+  progress_bar: { ...DEFAULT_PROGRESS_BAR },
 };
 
 export const DEFAULT_GAME_SCREENS: GameScreensConfig = {
@@ -90,6 +118,7 @@ export const DEFAULT_GAME_SCREENS: GameScreensConfig = {
     background_asset_id: "",
     title: "Настройки",
     title_pos: CENTER_TOP,
+    back_button: { label: "Назад", x: 50, y: 92 },
     items: [
       { id: "music", label: "Музыка", type: "toggle", key: "music_volume", defaultValue: true, x: 50, y: 40 },
       { id: "sound", label: "Звуки", type: "toggle", key: "sound_volume", defaultValue: true, x: 50, y: 52 },
@@ -139,6 +168,19 @@ function normalizeLoader(item: Partial<LoadingScreenConfig>, index: number): Loa
     title_pos: pos(item.title_pos, DEFAULT_LOADER.title_pos),
     subtitle_pos: pos(item.subtitle_pos, DEFAULT_LOADER.subtitle_pos),
     tip_pos: pos(item.tip_pos, DEFAULT_LOADER.tip_pos),
+    title_style: normalizeElementStyle(item.title_style, "title"),
+    subtitle_style: normalizeElementStyle(item.subtitle_style, "subtitle"),
+    tip_style: normalizeElementStyle(item.tip_style, "text"),
+    progress_bar: normalizeProgressBar(item.progress_bar),
+  };
+}
+
+function normalizeBackButton(item: Partial<BackButtonConfig> | undefined): BackButtonConfig {
+  return {
+    label: String(item?.label ?? "Назад"),
+    x: typeof item?.x === "number" ? item.x : 50,
+    y: typeof item?.y === "number" ? item.y : 92,
+    style: normalizeElementStyle(item?.style, "button"),
   };
 }
 
@@ -190,15 +232,26 @@ export function parseGameScreens(metadata: Record<string, unknown> | undefined):
     main_menu: {
       ...mainMenu,
       title_pos: pos(mainMenu.title_pos, DEFAULT_GAME_SCREENS.main_menu.title_pos),
+      title_style: normalizeElementStyle(mainMenu.title_style, "title"),
+      button_style: normalizeElementStyle(mainMenu.button_style, "button"),
       items: Array.isArray(mainMenu.items)
-        ? mainMenu.items.map(normalizeMenuItem)
+        ? mainMenu.items.map((item, i) => ({
+            ...normalizeMenuItem(item, i),
+            style: item.style ? normalizeElementStyle(item.style, "button") : undefined,
+          }))
         : DEFAULT_GAME_SCREENS.main_menu.items,
     },
     settings: {
       ...settings,
       title_pos: pos(settings.title_pos, DEFAULT_GAME_SCREENS.settings.title_pos),
+      title_style: normalizeElementStyle(settings.title_style, "title"),
+      control_style: normalizeElementStyle(settings.control_style, "control"),
+      back_button: normalizeBackButton(settings.back_button as Partial<BackButtonConfig>),
       items: Array.isArray(settings.items)
-        ? settings.items.map(normalizeSettingsItem)
+        ? settings.items.map((item, i) => ({
+            ...normalizeSettingsItem(item, i),
+            style: item.style ? normalizeElementStyle(item.style, "control") : undefined,
+          }))
         : DEFAULT_GAME_SCREENS.settings.items,
     },
   };

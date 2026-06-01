@@ -7,6 +7,7 @@ type EditorState = {
   edges: GraphEdge[];
   assets: Asset[];
   selectedNodeId: string | null;
+  selectedEdgeId: string | null;
   previewState: PreviewState | null;
   isSaving: boolean;
   setProjectId: (id: string) => void;
@@ -15,6 +16,7 @@ type EditorState = {
   setEdges: (edges: GraphEdge[]) => void;
   setAssets: (assets: Asset[]) => void;
   selectNode: (id: string | null) => void;
+  selectEdge: (id: string | null) => void;
   updateNodeData: (id: string, data: Record<string, unknown>) => void;
   updateNodeLabel: (id: string, label: string) => void;
   setPreviewState: (state: PreviewState | null) => void;
@@ -29,6 +31,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   edges: [],
   assets: [],
   selectedNodeId: null,
+  selectedEdgeId: null,
   previewState: null,
   isSaving: false,
   setProjectId: (id) => set({ projectId: id }),
@@ -36,7 +39,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
   setAssets: (assets) => set({ assets }),
-  selectNode: (id) => set({ selectedNodeId: id }),
+  selectNode: (id) => set({ selectedNodeId: id, selectedEdgeId: null }),
+  selectEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null }),
   updateNodeData: (id, data) =>
     set({
       nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)),

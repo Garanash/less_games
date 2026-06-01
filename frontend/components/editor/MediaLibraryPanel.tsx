@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 const MEDIA_TABS = [
   { kind: "background", label: "Фоны", icon: Image },
   { kind: "character", label: "Персонажи", icon: User },
+  { kind: "cg", label: "CG", icon: Image },
   { kind: "music", label: "Музыка", icon: Music },
   { kind: "sound", label: "Звуки", icon: Volume2 },
   { kind: "voice", label: "Голос", icon: Volume2 },
