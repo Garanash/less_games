@@ -46,9 +46,11 @@ def run(client: paramiko.SSHClient, command: str, timeout: int = 900) -> int:
     err = stderr.read().decode("utf-8", errors="replace")
     code = stdout.channel.recv_exit_status()
     if out.strip():
-        print(out.rstrip()[-4000:])
+        safe = out.rstrip()[-4000:].encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+        print(safe)
     if err.strip() and code != 0:
-        print(err.rstrip()[-2000:], file=sys.stderr)
+        safe_err = err.rstrip()[-2000:].encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+        print(safe_err, file=sys.stderr)
     return code
 
 
